@@ -1,5 +1,6 @@
 // std=c++20
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -82,20 +83,31 @@ template <class Iter> void radix_sort(Iter first, Iter last) {
     counting_sort(first, last, exp);
   }
 }
-template <typename T> void print_vec(const std::vector<T> v) {
+template <typename T> void print_vec(const std::vector<T> &v) {
   for (auto i : v) {
     std::cout << i << '\t';
   }
   std::cout << std::endl;
 }
-int main() {
+int main(int argc, char *argv[]) {
+  using namespace std::chrono;
+  srand(time(0));
   void (*sort)(std::vector<int>::iterator, std::vector<int>::iterator) =
-      gnome_sort<std::vector<int>::iterator>;
+      shel_sort<std::vector<int>::iterator>;
+  size_t size = 0;
+  do {
+    std::cout << "write size\n";
+    std::cin >> size;
+    std::vector<int> vec(size);
+    for (auto i = 0; i < size; ++i) {
+      vec[i] = rand();
+    }
+    auto start = high_resolution_clock::now();
+    sort(vec.begin(), vec.end());
+    auto end = high_resolution_clock::now();
 
-  std::vector<int> vec = {1234, 2356,  35,   856, 8,   1245,
-                          2134, 23524, 6745, 8,   123, 125};
+    std::cout << "Time to sort " << size << "element:\t"
+              << duration_cast<milliseconds>(end - start).count() << std::endl;
 
-  print_vec(vec);
-  sort(begin(vec), end(vec));
-  print_vec(vec);
+  } while (size != 0);
 }
