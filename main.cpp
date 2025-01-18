@@ -140,7 +140,6 @@ int main() {
   ItmoCord = find_nearest(g, {30.296802, 59.943943}); // Биржа :)
   HomeCord = find_nearest(g, {30.499978, 59.937630}); // Белорусская 8
   std::cout << ItmoCord->get_val() << '\t' << HomeCord->get_val() << std::endl;
-  std::cout << (ItmoCord == HomeCord) << std::endl;
   test_bfs(g, ItmoCord, HomeCord);
   test_dfs(g, HomeCord, ItmoCord);
   test_a_star(g, HomeCord, ItmoCord);
