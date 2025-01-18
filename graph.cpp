@@ -12,6 +12,7 @@
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 template <typename V, typename E> class Graph;
@@ -23,6 +24,9 @@ template <typename V, typename E> class Node {
   std::unordered_map<NdPoint, E> related;
 
 public:
+  const std::unordered_map<NdPoint, E> &get_related() const noexcept {
+    return related;
+  }
   Node() = delete;
   Node(const V &val) : val(val), related() {}
   Node(const V &val, const std::unordered_map<NdPoint, const E &> &related)
@@ -90,7 +94,12 @@ public:
   Graph(const std::unordered_set<NdPoint> nodes) : nodes(nodes) {}
 
   const NdPoint &add(const V &node_val) {
-    return add(std::make_shared<Node>(node_val));
+    auto find = find_node(node_val);
+    if (find) {
+      return find;
+
+    } else
+      return add(std::make_shared<Node>(node_val));
   }
   const NdPoint &add(const NdPoint &node) {
     nodes.insert(node);
@@ -114,7 +123,8 @@ public:
 
   const NdPoint &find_node(const V &node_val) {
     auto p = std::make_shared<Node>(node_val);
-    return *nodes.find(p);
+    auto res = nodes.find(p);
+    return res == nodes.end() ? *new NdPoint(nullptr) : *res;
   }
 
   void print() const {
@@ -123,14 +133,14 @@ public:
     }
   }
   std::size_t size() { return nodes.size(); }
-  void dfs(const NdPoint &start) {
+  E dfs_find_path(const NdPoint &start, const NdPoint &end) const {
     std::unordered_set<NdPoint> visited;
-    std::stack<NdPoint> stack;
+    std::stack<std::pair<NdPoint, E>> stack;
 
-    stack.push(start);
+    stack.push(std::make_pair(start, E()));
 
     while (!stack.empty()) {
-      auto node = stack.top();
+      auto [node, current_cost] = stack.top();
       stack.pop();
 
       if (visited.find(node) != visited.end()) {
@@ -139,46 +149,50 @@ public:
       visited.insert(node);
 
       // Обрабатываем текущую вершину
-      std::cout << "Visited: " << node->related.size() << "  "
-                << node->get_val() << std::endl;
+      if (node == end)
+        return current_cost;
 
       // Проходим по соседям
       for (const auto &[neighbor, edge] : node->related) {
         if (visited.find(neighbor) == visited.end()) {
-          stack.push(neighbor);
+          stack.push(std::make_pair(neighbor, current_cost + edge));
         }
       }
     }
+    return E();
   }
 
   // BFS (поиск в ширину)
-  void bfs(const NdPoint &start) {
+  E bfs_find_path(const NdPoint &start, const NdPoint &end) const {
     std::unordered_set<NdPoint> visited;
-    std::queue<NdPoint> queue;
+    std::queue<std::pair<NdPoint, E>> queue;
 
-    queue.push(start);
+    queue.push(std::make_pair(start, E()));
     visited.insert(start);
 
     while (!queue.empty()) {
-      auto node = queue.front();
+      auto [node, current_cost] = queue.front();
       queue.pop();
 
       // Обрабатываем текущую вершину
-      std::cout << "Visited: " << node->related.size() << "  "
-                << node->get_val() << std::endl;
+      if (node->val == end->val) {
+        return current_cost;
+      }
 
       // Проходим по соседям
       for (const auto &[neighbor, edge] : node->related) {
         if (visited.find(neighbor) == visited.end()) {
-          queue.push(neighbor);
+          queue.push(std::make_pair(neighbor, current_cost + edge));
           visited.insert(neighbor);
         }
       }
     }
+    std::cout << "Path not\n";
+    return E();
   }
-  std::vector<NdPoint>
-  a_star(const NdPoint &start, const NdPoint &goal,
-         std::function<double(const NdPoint &, const NdPoint &)> heuristic) {
+  std::vector<NdPoint> a_star_find_path(
+      const NdPoint &start, const NdPoint &goal,
+      std::function<double(const NdPoint &, const NdPoint &)> heuristic) const {
     using Node = typename Graph<V, E>::NdPoint;
 
     // Очередь с приоритетом для открытых вершин
@@ -193,27 +207,21 @@ public:
 
     std::priority_queue<PriorityQueueElement> open_set;
 
-    // G-стоимость: минимальная стоимость пути из start до вершины
     std::unordered_map<Node, double> g_cost;
     g_cost[start] = 0.0;
 
-    // F-стоимость: G + эвристика
     std::unordered_map<Node, double> f_cost;
     f_cost[start] = heuristic(start, goal);
 
-    // Предшественники (для восстановления пути)
     std::unordered_map<Node, Node> came_from;
 
-    // Установим стартовую вершину в очередь
     open_set.push({start, f_cost[start]});
-    std::unordered_set<Node> closed_set; // Набор обработанных вершин
+    std::unordered_set<Node> closed_set;
 
     while (!open_set.empty()) {
-      // Извлекаем вершину с наименьшей F-стоимостью
       Node current = open_set.top().node;
       open_set.pop();
 
-      // Если достигли целевой вершины, восстанавливаем путь
       if (current == goal) {
         std::vector<Node> path;
         for (Node at = goal; at != nullptr; at = came_from[at]) {
@@ -223,18 +231,14 @@ public:
         return path;
       }
 
-      // Переносим текущую вершину в множество закрытых
       closed_set.insert(current);
 
-      // Просматриваем соседей текущей вершины
       for (auto &neighbor : current->related) {
         if (closed_set.find(neighbor.first) != closed_set.end()) {
-          // Пропускаем уже обработанные вершины
           continue;
         }
 
-        double tentative_g_cost =
-            g_cost[current] + neighbor.second; // G + стоимость ребра
+        double tentative_g_cost = g_cost[current] + neighbor.second;
 
         if (g_cost.find(neighbor.first) == g_cost.end() ||
             tentative_g_cost < g_cost[neighbor.first]) {
@@ -249,7 +253,6 @@ public:
       }
     }
 
-    // Если путь не найден
     return {};
   }
 };

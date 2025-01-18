@@ -24,7 +24,6 @@ int main() {
   g.add(i, y, 500);
   g.print();
   std::cout << "\t\t" << std::endl;
-  g.bfs(i);
   std::cout << "\t\t" << std::endl;
   g.dfs(i);
   std::cout << "\t\t" << std::endl;
@@ -33,4 +32,7 @@ int main() {
     std::cout << val->get_val() << '\t';
   }
   std::cout << std::endl;
+  g.add("111", "333", 1);
+  g.add("111", "444", 1);
+  g.print();
 }
